@@ -1,4 +1,5 @@
 #!/usr/bin/python3.9
+#Using subprocess run command and save output to file
 import subprocess
 
 #Function to accept and run command
