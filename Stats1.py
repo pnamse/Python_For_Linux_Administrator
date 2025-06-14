@@ -1,160 +1,67 @@
+import requests
 import csv
-from datetime import datetime
-from collections import defaultdict
+import yaml
+import json
+from datetime import timedelta
 
-CSV_FILE = "host_inventory.csv"
-HTML_REPORT = "infra_summary_report.html"
-TEXT_REPORT = "infra_summary_report.txt"
-EMAIL_RECIPIENT = "admin@example.com"
+# Load credentials from file (3 lines: URL, username, password)
+with open('satellite_credentials.txt') as f:
+    url = f.readline().strip()
+    username = f.readline().strip()
+    password = f.readline().strip()
 
-# --- LOAD DATA FROM CSV ---
-def load_csv_data(file_path):
-    with open(file_path, newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
-        data = [row for row in reader]
+# Disable SSL warnings if using self-signed certs
+requests.packages.urllib3.disable_warnings()
 
-        for row in data:
-            # Extract and simplify uptime
-            if row['Uptime'] and row['Uptime'].endswith('d'):
-                row['Uptime'] = row['Uptime'].replace('d', '')
+# Fetch host data from Satellite server
+response = requests.get(
+    f"{url}/api/hosts",
+    auth=(username, password),
+    headers={"Content-Type": "application/json"},
+    verify=False
+)
+data = response.json().get('results', [])
 
-            # Tag environment and region
-            hostgroup = row.get('Hostgroup Name', '').lower()
-            if 'za' in hostgroup:
-                if 'prd' in hostgroup:
-                    row['Environment'] = 'SA Prod'
-                    row['Env'] = 'prod'
-                elif 'dev' in hostgroup:
-                    row['Environment'] = 'SA NonProd'
-                    row['Env'] = 'dev'
-                else:
-                    row['Environment'] = 'SA Other'
-                    row['Env'] = 'unknown'
-            elif 'uk' in hostgroup:
-                if 'prd' in hostgroup:
-                    row['Environment'] = 'UK Prod'
-                    row['Env'] = 'prod'
-                elif 'dev' in hostgroup:
-                    row['Environment'] = 'UK NonProd'
-                    row['Env'] = 'dev'
-                else:
-                    row['Environment'] = 'UK Other'
-                    row['Env'] = 'unknown'
-            else:
-                row['Environment'] = 'Other'
-                row['Env'] = 'unknown'
+# Prepare CSV and YAML data
+csv_rows = []
+yaml_data = {}
 
-            # Remove purpose/usage if exists
-            row.pop('Purpose/Usage', None)
-        return data
+for host in data:
+    name = host.get("name")
+    ip = host.get("ip")
+    os = host.get("operatingsystem_name", "")
+    release = host.get("operatingsystem_major", "")
+    hostgroup = host.get("hostgroup_name", "").lower()
+    uptime_sec = int(host.get("facts", {}).get("uptime_seconds", 0))
+    
+    # ENV based on hostgroup
+    env = "PRD" if "prd" in hostgroup else "DEV" if "dev" in hostgroup else "UNKNOWN"
 
-# --- REPORT CONTENT HOLDERS ---
-text_output = []
-html_output = ["<html><body><h2>Infrastructure Summary Report</h2>"]
+    # Location based on hostgroup
+    location = "SA" if hostgroup.startswith("za-") else "UK" if hostgroup.startswith("uk-") else "OTHER"
 
-def add_section(title):
-    text_output.append(f"\n--- {title} ---")
-    html_output.append(f"<h3>{title}</h3><ul>")
+    # Uptime in days
+    uptime_days = uptime_sec // 86400
 
-def add_line(line):
-    text_output.append(line)
-    html_output.append(f"<li>{line}</li>")
+    # Append to CSV
+    csv_rows.append([name, ip, f"{os} {release}", env, location, uptime_days])
 
-def close_section():
-    html_output.append("</ul>")
+    # Append to YAML
+    yaml_data[name] = {
+        "ip": ip,
+        "ENV": env,
+        "Location": location,
+        "OS": f"{os} {release}"
+    }
 
-# --- STATS FUNCTIONS ---
-def count_stats(data):
-    add_section("Server Count Summary")
-    total = len(data)
-    prod = len([d for d in data if d['Env'] == 'prod'])
-    nonprod = len([d for d in data if d['Env'] == 'dev'])
-    add_line(f"Total Servers: {total}")
-    add_line(f"Production: {prod}")
-    add_line(f"Non-Production: {nonprod}")
-    close_section()
+# Write CSV
+with open("hosts_inventory.csv", "w", newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(["Hostname", "IP", "OS Version", "ENV", "Location", "Uptime Days"])
+    writer.writerows(csv_rows)
 
-    # UK stats
-    add_section("UK Server Stats")
-    uk_data = [d for d in data if 'UK' in d['Environment']]
-    uk_prod = [d for d in uk_data if d['Env'] == 'prod']
-    uk_nonprod = [d for d in uk_data if d['Env'] == 'dev']
-    add_line(f"Total UK Servers: {len(uk_data)}")
-    add_line(f"Production: {len(uk_prod)}")
-    for ver in ['RHEL 9', 'RHEL 8', 'RHEL 7']:
-        add_line(f"  {ver}: {len([d for d in uk_prod if ver in d['OS Version']])}")
-    add_line(f"Non-Production: {len(uk_nonprod)}")
-    for ver in ['RHEL 9', 'RHEL 8', 'RHEL 7']:
-        add_line(f"  {ver}: {len([d for d in uk_nonprod if ver in d['OS Version']])}")
-    hostgroups = defaultdict(int)
-    for d in uk_data:
-        hostgroups[d['Hostgroup Name']] += 1
-    add_line("Hostgroup counts:")
-    for k, v in sorted(hostgroups.items(), key=lambda x: x[1], reverse=True):
-        add_line(f"  {k}: {v}")
-    close_section()
+# Write YAML
+with open("hosts_inventory.yaml", "w") as f:
+    yaml.dump(yaml_data, f, default_flow_style=False)
 
-    # SA stats
-    add_section("SA Server Stats")
-    sa_data = [d for d in data if 'SA' in d['Environment']]
-    sa_prod = [d for d in sa_data if d['Env'] == 'prod']
-    sa_nonprod = [d for d in sa_data if d['Env'] == 'dev']
-    add_line(f"Total SA Servers: {len(sa_data)}")
-    add_line(f"Production: {len(sa_prod)}")
-    for ver in ['RHEL 9', 'RHEL 8', 'RHEL 7']:
-        add_line(f"  {ver}: {len([d for d in sa_prod if ver in d['OS Version']])}")
-    add_line(f"Non-Production: {len(sa_nonprod)}")
-    for ver in ['RHEL 9', 'RHEL 8', 'RHEL 7']:
-        add_line(f"  {ver}: {len([d for d in sa_nonprod if ver in d['OS Version']])}")
-    hostgroups = defaultdict(int)
-    for d in sa_data:
-        hostgroups[d['Hostgroup Name']] += 1
-    add_line("Hostgroup counts:")
-    for k, v in sorted(hostgroups.items(), key=lambda x: x[1], reverse=True):
-        add_line(f"  {k}: {v}")
-    close_section()
-
-# --- UPTIME ANALYSIS ---
-def uptime_ranges(data):
-    add_section("Uptime Between 30-90 Days")
-    mid = [d for d in data if d['Uptime'].isdigit() and 30 < int(d['Uptime']) <= 90]
-    add_line(f"Count: {len(mid)}")
-    for d in mid:
-        add_line(f"  {d['Hostname']}: {d['Uptime']} days")
-    close_section()
-
-    add_section("Uptime More Than 90 Days")
-    high = [d for d in data if d['Uptime'].isdigit() and int(d['Uptime']) > 90]
-    add_line(f"Count: {len(high)}")
-    for d in high:
-        add_line(f"  {d['Hostname']}: {d['Uptime']} days")
-    close_section()
-
-# --- EXPORT REPORTS ---
-def save_reports():
-    with open(TEXT_REPORT, 'w') as txt:
-        txt.write('\n'.join(text_output))
-    with open(HTML_REPORT, 'w') as html:
-        html.write('\n'.join(html_output) + '</body></html>')
-
-def send_email():
-    import subprocess
-    with open(HTML_REPORT) as f:
-        html_body = f.read()
-    subprocess.run([
-        'mailx',
-        '-a', TEXT_REPORT,
-        '-s', 'Infra Summary Report',
-        '-r', 'noreply@example.com',
-        '-S', 'content-type=text/html',
-        EMAIL_RECIPIENT
-    ], input=html_body.encode())
-
-# --- MAIN ---
-if __name__ == "__main__":
-    data = load_csv_data(CSV_FILE)
-    count_stats(data)
-    uptime_ranges(data)
-    save_reports()
-    send_email()
-
+print("Files created: hosts_inventory.csv and hosts_inventory.yaml")
