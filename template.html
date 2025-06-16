@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Satellite Report</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        h1 { color: #2C3E50; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .section { margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <h1>Satellite Host Statistics Report</h1>
+    <p>Generated on: {{ generated_on }}</p>
+
+    <div class="section">
+        <h2>Total Hosts: {{ total }}</h2>
+        <h3>Environment Summary</h3>
+        <table>
+            <tr><th>Location</th><th>Prod</th><th>Non Prod</th></tr>
+            {% for loc, data in envs.items() %}
+            <tr><td>{{ loc }}</td><td>{{ data.prod }}</td><td>{{ data.nonprod }}</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="section">
+        <h3>OS Version Count</h3>
+        <table>
+            <tr><th>OS Version</th><th>Count</th></tr>
+            {% for os, count in os_versions.items() %}
+            <tr><td>{{ os }}</td><td>{{ count }}</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="section">
+        <h3>Uptime Summary</h3>
+        <p>Hosts with 30–90 days uptime: {{ count_30_90 }}</p>
+        <p>Hosts with >90 days uptime: {{ count_90_plus }}</p>
+    </div>
+</body>
+</html>
