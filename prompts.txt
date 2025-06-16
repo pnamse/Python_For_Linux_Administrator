@@ -27,3 +27,4 @@ Create python script to prepare below statistic  report based on above csv data 
 6. Print hosts lists Uptime more than 90 days
 7. Generate a text report
 8. Generate awesome visual html report with date and time and send that html report on inline email
+
