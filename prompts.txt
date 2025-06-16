@@ -1,0 +1,12 @@
+Prompts
+=======
+Create a python script which will 
+1. Pull all hosts from Redhat Satellite Servers
+2.PLease exclude 'virt-who' entries
+3. Creates a CSV file with below fields
+hostname,ip,OS Version,hostgroup,Env,Location,Uptime
+Env should be fileter based on hostgroup_name. if it contains _dev then nonprod,
+if it contains _prd then prod, else Other
+Location Should be filtered based on hostgroup_name, if za- then SA, if uk- then UK, else other.
+4. Update uptime by converting field  uptime_seconds to days and include on number.
+5. Once done create inventory file for Ansible playbooks seaparated as Prod and non prod for SA and prod and nonprod for UK.
