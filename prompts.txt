@@ -13,12 +13,14 @@ Location Should be filtered based on hostgroup_name, if za- then SA, if uk- then
 
 Create python script to prepare below statistic  report based on above csv data generated 
 1. Total Number of Hosts
-	- UK Hosts
-      - Non Prod
+	- Total UK Hosts
+           - Non Prod
+	   - Prod
+           - Other
+	- Total SA Hosts
+          - Non Prod
 	  - Prod
-	- SA Hosts
-      - Non Prod
-	  - Prod
+ 	  - Other
 2. OS Version Wise Count 
 3. Hostgroup wise count
 4. Uptime more than 30days < 90 days
@@ -27,4 +29,19 @@ Create python script to prepare below statistic  report based on above csv data 
 6. Print hosts lists Uptime more than 90 days
 7. Generate a text report
 8. Generate awesome visual html report with date and time and send that html report on inline email
+
+Need below changes
+1. Total Number of Hosts
+	- Total UK Hosts
+           - Non Prod
+	   - Prod
+           - Other
+	- Total SA Hosts
+          - Non Prod
+	  - Prod
+ 	  - Other
+2. Hostgroup count add Unknown not part of any hostgroups hosts
+3. print the both uptime stats first and then print the hosts list
+
+
 
