@@ -10,3 +10,20 @@ if it contains _prd then prod, else Other
 Location Should be filtered based on hostgroup_name, if za- then SA, if uk- then UK, else other.
 4. Update uptime by converting field  uptime_seconds to days and include on number.
 5. Once done create inventory file for Ansible playbooks seaparated as Prod and non prod for SA and prod and nonprod for UK.
+
+Create python script to prepare below statistic  report based on above csv data generated 
+1. Total Number of Hosts
+	- UK Hosts
+      - Non Prod
+	  - Prod
+	- SA Hosts
+      - Non Prod
+	  - Prod
+2. OS Version Wise Count 
+3. Hostgroup wise count
+4. Uptime more than 30days < 90 days
+5. Uptime more than 90 days
+5. Print hosts lists Uptime 30days < 90 days
+6. Print hosts lists Uptime more than 90 days
+7. Generate a text report
+8. Generate awesome visual html report with date and time and send that html report on inline email
