@@ -18,16 +18,24 @@ def generate_stats(hosts):
     }
 
     for h in hosts:
-        loc = h.get("Location", "Other")
-        env = h.get("Env", "Other")
+        loc = h.get("Location", "Other") or "Other"
+        env = h.get("Env", "Other") or "Other"
+        hostgroup = h.get("hostgroup") or "Unknown"
 
+        # Count per env and location
         stats["env_location"][loc][env] += 1
+
+        # OS Version Count
         stats["os_count"][h.get("OS Version", "Unknown")] += 1
 
-        hostgroup = h.get("hostgroup") or "Unknown"
+        # Hostgroup Count
         stats["grouped_hostgroups"][loc][env][hostgroup] += 1
 
-        uptime = int(h.get("Uptime", 0))
+        # Uptime Category
+        try:
+            uptime = int(h.get("Uptime", 0))
+        except ValueError:
+            uptime = 0
         if 30 < uptime < 90:
             stats["uptime_30_90_grouped"][loc][env].append(h)
         elif uptime >= 90:
@@ -44,10 +52,10 @@ def write_text_report(stats, filename="report.txt"):
         # Overall host count
         f.write("Total Hosts: {}\n\n".format(stats["total_hosts"]))
 
-        # Environment Summary
+        # Environment Summary by Location
         f.write("Environment Summary by Location:\n")
-        for loc in ["UK", "SA"]:
-            envs = stats["env_location"].get(loc, {})
+        for loc in sorted(stats["env_location"]):
+            envs = stats["env_location"][loc]
             total = sum(envs.values())
             f.write(f"{loc} Hosts (Total: {total}):\n")
             f.write(f"  - Prod: {envs.get('prod', 0)}\n")
@@ -61,15 +69,11 @@ def write_text_report(stats, filename="report.txt"):
             f.write(f"  - {os}: {count}\n")
         f.write("\n")
 
-        # Hostgroup Summary (sorted)
+        # Hostgroup Summary
         f.write("Hostgroup Counts by Location and Environment:\n")
-        for loc in ["UK", "SA"]:
-            if loc not in stats["grouped_hostgroups"]:
-                continue
+        for loc in sorted(stats["grouped_hostgroups"]):
             f.write(f"{loc}:\n")
-            for env in ["prod", "nonprod", "Other"]:
-                if env not in stats["grouped_hostgroups"][loc]:
-                    continue
+            for env in sorted(stats["grouped_hostgroups"][loc]):
                 f.write(f"  {env}:\n")
                 for hg, count in sorted(stats["grouped_hostgroups"][loc][env].items()):
                     f.write(f"    - {hg}: {count}\n")
@@ -90,15 +94,11 @@ def write_uptime_host_list(grouped_hosts, filename, label):
     with open(filename, "w") as f:
         f.write(f"{label}\n")
         f.write("=" * 60 + "\n\n")
-        for loc in ["UK", "SA"]:
-            if loc not in grouped_hosts:
-                continue
+        for loc in sorted(grouped_hosts):
             f.write(f"{loc}:\n")
-            for env in ["prod", "nonprod", "Other"]:
-                if env not in grouped_hosts[loc]:
-                    continue
+            for env in sorted(grouped_hosts[loc]):
                 f.write(f"  {env}:\n")
-                for h in sorted(grouped_hosts[loc][env], key=lambda x: int(x['Uptime']), reverse=True):
+                for h in sorted(grouped_hosts[loc][env], key=lambda x: int(x.get("Uptime", 0)), reverse=True):
                     hostname = h.get("hostname", "N/A")
                     ip = h.get("ip", "N/A")
                     os = h.get("OS Version", "Unknown")
