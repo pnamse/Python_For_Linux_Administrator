@@ -1,15 +1,26 @@
 Prompts
 =======
 Create a python script which will 
-1. Pull all hosts from Redhat Satellite Servers
+1. Pull all hosts from Redhat Satellite Servers ,pickup credentials from .secrets 
 2.PLease exclude 'virt-who' entries
-3. Creates a CSV file with below fields
+3. Creates a hosts.csv file with below fields
 hostname,ip,OS Version,hostgroup,Env,Location,Uptime
 Env should be fileter based on hostgroup_name. if it contains _dev then nonprod,
 if it contains _prd then prod, else Other
-Location Should be filtered based on hostgroup_name, if za- then SA, if uk- then UK, else other.
+Location Should be filtered based on hostname if it contains mum them MUM or hostgroup_name, if za- then SA, if uk- then UK, else other.
 4. Update uptime by converting field  uptime_seconds to days and include on number.
 5. Once done create inventory file for Ansible playbooks seaparated as Prod and non prod for SA and prod and nonprod for UK.
+
+Another script 
+1. Pull all hosts from Oracle Spacewalk portal,pickup credentials from .secrets 
+2. Please exclude 'virt-who' entries
+3. Creates a oracle.csv file with below fields
+hostname,ip,OS Version,hostgroup,Env,Location,Uptime
+Env should be fileter based on hostgroup_name. if it contains _dev then nonprod, if it contains _prd then prod, else Other
+Location by default SA.
+4. Update uptime by converting field  uptime_seconds to days and include on number.
+5. Once done create inventory file for Ansible playbooks seaparated as Prod and non prod for SA and prod and nonprod for UK.
+6. Merge  hosts.csv and oracle.csv
 
 Create python script to prepare below statistic  report based on above csv data generated 
 1. Total Number of Hosts
